@@ -2,7 +2,6 @@ import openai
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv()
-#openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 client = openai.OpenAI()
 
@@ -16,48 +15,58 @@ model = "gpt-4o-mini"
 #     model=model
 # )
 
-# --Create the Thread--
-thread = client.beta.threads.create(
-    messages=[
-        {
-            'role':'user',
-            'content': 'Show me hospitals in San Francisco'
-        }
-    ]
-)
-
-# --Hardcode the ID's--
 assistant_id = "asst_q3EwkoYBplNvgf6IRrwx5eOZ"
-thread_id = "thread_b41xDR2sMjHbzkzaV5aXxNoX"
 
-msg = 'Show the best hospitals for pay in San Francisco?'
-msg = client.beta.threads.messages.create(
-    thread_id=thread_id,
-    role='user',
-    content=msg
-)
+def ask_margot_bot():
+    print("Ask Margot Bot: Hi! Ask me anything about hospitals. Type 'exit' to quit.\n")
+    
+    # Create a new thread when the chatbot starts
+    thread = client.beta.threads.create(messages=[])
+    thread_id = thread.id
 
-# --Run our Assistant--
-run = client.beta.threads.runs.create(
-    thread_id=thread_id,
-    assistant_id=assistant_id,
-    instructions=""
-)
+    while True:
+        user_input = input("You: ").strip()
+        print()
 
-# -- Retrieve the Assistant's Response --
-run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
-messages = client.beta.threads.messages.list(thread_id=thread_id)
+        if user_input.lower() == "exit":
+            print("Ask Margot Bot: Goodbye, have a great day!")
+            break
 
-assistant_responses = []
+        try:
+            # Add the user's message to the thread
+            client.beta.threads.messages.create(
+                thread_id=thread_id,
+                role='user',
+                content=user_input
+            )
 
-# Check if there are any messages in the thread
-if messages.data:
-    # Iterate over all messages to extract assistant responses
-    for message in messages.data:
-        if message.role == 'assistant':  # Filter for assistant messages
-            for content_block in message.content:
-                if content_block.type == 'text':  # Ensure it's a text content block
-                    assistant_responses.append(content_block.text.value)
+            # Run the assistant for the current thread
+            run = client.beta.threads.runs.create(
+                thread_id=thread_id,
+                assistant_id=assistant_id,
+                instructions=""
+            )
 
-# Print all extracted assistant responses
-print(assistant_responses[-1])
+            # Fetch all messages in the thread to get the assistant's response
+            messages = client.beta.threads.messages.list(thread_id=thread_id)
+            assistant_responses = []
+
+            if messages.data:
+                # Extract assistant messages
+                for message in messages.data:
+                    if message.role == 'assistant':
+                        for content_block in message.content:
+                            if content_block.type == 'text':
+                                assistant_responses.append(content_block.text.value)
+            
+            # Display the latest assistant response
+            if assistant_responses:
+                print(f"Ask Margot Bot: {assistant_responses[-1]}")
+            else:
+                print("Ask Margot Bot: Hmm, I didn't understand that. Could you rephrase?")
+        
+        except Exception as e:
+            print(f"Ask Margot Bot: Oops, something went wrong! ({str(e)})")
+
+if __name__ == "__main__":
+    ask_margot_bot()
