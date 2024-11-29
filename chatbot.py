@@ -1,72 +1,79 @@
+import os
+from dotenv import load_dotenv
 import openai
-from dotenv import find_dotenv, load_dotenv
 
+import time
+import logging
+from datetime import datetime
+import streamlit as st
+
+#Load environment
 load_dotenv()
-
+#Create the client to be used for user's interaction
 client = openai.OpenAI()
 
-model = "gpt-4o-mini"
+#Retrieve assistant's ID
+assis_id = os.getenv('ASSISTANT_ID')
 
-# # --Creating the Assistant--
+#Create the user thread for current user interaction
+thread = client.beta.threads.create()
+thread_id = thread.id
 
-# ask_margot_assistant = client.beta.assistants.create(
-#     name='Ask Margot Bot',
-#     instructions='You are Margot, a friendly travel nurse assistant. Provide short, conversational responses based on hospital reviews, summarizing ratings as sentiments (e.g., 5 = excellent). Avoid detailed attributes unless asked, focusing on the user’s needs with empathetic, tailored replies. Match their tone and guide the conversation with clarifying questions. If data is missing, suggest alternatives or offer further help. Keep it engaging and helpful.',
-#     model=model
-# )
+#Initial statement for user to respond to
+print("Ask Margot Bot: Hi! Ask me anything about hospitals. Type 'exit' to quit.\n")
 
-assistant_id = "asst_q3EwkoYBplNvgf6IRrwx5eOZ"
+#Loop until user leaves or exits manually
+while True:
+    message = input("You: ").strip()
+    print()
 
-def ask_margot_bot():
-    print("Ask Margot Bot: Hi! Ask me anything about hospitals. Type 'exit' to quit.\n")
-    
-    # Create a new thread when the chatbot starts
-    thread = client.beta.threads.create(messages=[])
-    thread_id = thread.id
+    #Allows user to exit
+    if message == "exit" or message == "Exit":
+        break
 
-    while True:
-        user_input = input("You: ").strip()
-        print()
+    #Message is created using user's input to send to the API
+    message = client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=message
+    )
 
-        if user_input.lower() == "exit":
-            print("Ask Margot Bot: Goodbye, have a great day!")
-            break
+    #Runs the assistant
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assis_id,
+        instructions=""
+    )
 
-        try:
-            # Add the user's message to the thread
-            client.beta.threads.messages.create(
-                thread_id=thread_id,
-                role='user',
-                content=user_input
-            )
+    def wait_for_run_completion(client, thread_id, run_id, sleep_interval=5):
+        """
+        Waits for a run to complete and prints the elapsed time.:param client: The OpenAI client object.
+        :param thread_id: The ID of the thread.
+        :param run_id: The ID of the run.
+        :param sleep_interval: Time in seconds to wait between checks.
+        """
+        while True:
+            try:
+                run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
+                if run.completed_at:
+                    elapsed_time = run.completed_at - run.created_at
+                    formatted_elapsed_time = time.strftime(
+                        "%H:%M:%S", time.gmtime(elapsed_time)
+                    )
+                    print(f"Run completed in {formatted_elapsed_time}")
+                    logging.info(f"Run completed in {formatted_elapsed_time}")
+                    # Get messages here once Run is completed!
+                    messages = client.beta.threads.messages.list(thread_id=thread_id)
+                    last_message = messages.data[0]
+                    response = last_message.content[0].text.value
+                    print(f"Assistant Response: {response}")
+                    break
+            except Exception as e:
+                logging.error(f"An error occurred while retrieving the run: {e}")
+                break
+            logging.info("Waiting for run to complete...")
+            time.sleep(sleep_interval)
 
-            # Run the assistant for the current thread
-            run = client.beta.threads.runs.create(
-                thread_id=thread_id,
-                assistant_id=assistant_id,
-                instructions=""
-            )
-
-            # Fetch all messages in the thread to get the assistant's response
-            messages = client.beta.threads.messages.list(thread_id=thread_id)
-            assistant_responses = []
-
-            if messages.data:
-                # Extract assistant messages
-                for message in messages.data:
-                    if message.role == 'assistant':
-                        for content_block in message.content:
-                            if content_block.type == 'text':
-                                assistant_responses.append(content_block.text.value)
-            
-            # Display the latest assistant response
-            if assistant_responses:
-                print(f"Ask Margot Bot: {assistant_responses[-1]}")
-            else:
-                print("Ask Margot Bot: Hmm, I didn't understand that. Could you rephrase?")
-        
-        except Exception as e:
-            print(f"Ask Margot Bot: Oops, something went wrong! ({str(e)})")
-
-if __name__ == "__main__":
-    ask_margot_bot()
+    wait_for_run_completion(client=client,
+                            thread_id=thread_id,
+                            run_id=run.id)
