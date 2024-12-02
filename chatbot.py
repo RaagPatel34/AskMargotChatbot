@@ -19,33 +19,7 @@ assis_id = os.getenv('ASSISTANT_ID')
 thread = client.beta.threads.create()
 thread_id = thread.id
 
-#Initial statement for user to respond to
-print("Ask Margot Bot: Hi! Ask me anything about hospitals. Type 'exit' to quit.\n")
-
-#Loop until user leaves or exits manually
-while True:
-    message = input("You: ").strip()
-    print()
-
-    #Allows user to exit
-    if message == "exit" or message == "Exit":
-        break
-
-    #Message is created using user's input to send to the API
-    message = client.beta.threads.messages.create(
-        thread_id=thread_id,
-        role="user",
-        content=message
-    )
-
-    #Runs the assistant
-    run = client.beta.threads.runs.create(
-        thread_id=thread_id,
-        assistant_id=assis_id,
-        instructions=""
-    )
-
-    def wait_for_run_completion(client, thread_id, run_id, sleep_interval=5):
+def wait_for_run_completion(client, thread_id, run_id, sleep_interval=5):
         """
         Waits for a run to complete and prints the elapsed time.:param client: The OpenAI client object.
         :param thread_id: The ID of the thread.
@@ -73,6 +47,32 @@ while True:
                 break
             logging.info("Waiting for run to complete...")
             time.sleep(sleep_interval)
+
+#Initial statement for user to respond to
+print("Ask Margot Bot: Hi! Ask me anything about hospitals. Type 'exit' to quit.\n")
+
+#Loop until user leaves or exits manually
+while True:
+    message = input("You: ").strip()
+    print()
+
+    #Allows user to exit
+    if message == "exit" or message == "Exit":
+        break
+
+    #Message is created using user's input to send to the API
+    message = client.beta.threads.messages.create(
+        thread_id=thread_id,
+        role="user",
+        content=message
+    )
+
+    #Runs the assistant
+    run = client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assis_id,
+        instructions=""
+    )
 
     wait_for_run_completion(client=client,
                             thread_id=thread_id,
