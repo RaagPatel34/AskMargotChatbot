@@ -5,7 +5,6 @@ import openai
 import time
 import logging
 from datetime import datetime
-import streamlit as st
 
 #Load environment
 load_dotenv()
