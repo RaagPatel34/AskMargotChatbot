@@ -17,6 +17,7 @@ Seamless Integration: Leverages OpenAI's advanced API for quick and reliable res
 Install Python 3.8 or newer.
 
 Install required packages:
+
 `pip install -r requirements.txt`
 
 Add your OpenAI credentials in a .env file:
